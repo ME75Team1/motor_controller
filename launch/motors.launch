@@ -1,0 +1,4 @@
+<launch>
+    <rosparam file="$(find motor_controller)/params/params.yaml" />
+    <node pkg="motor_controller" type="dynamixel_controller.py" name = "dynamixel_controller" output="screen"></node>
+</launch>

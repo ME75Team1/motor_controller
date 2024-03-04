@@ -1,0 +1,18 @@
+# things that may change between tests
+/starting_leg_heights/lf: 0.02 # in meters
+/starting_leg_heights/rf: 0 # in meters
+/starting_leg_heights/lb: 0 # in meters
+/starting_leg_heights/rb: 0.03 # in meters
+/dynamixel/running_ids: [1, 4]
+
+# things that will not change between tests
+/dynamixel/meters_per_revolution: -0.004 # in meters
+/dynamixel/max_extension: 0.07 # in meters
+/leg_positions/lf: [0.05, 0] # see https://www.stereolabs.com/docs/positional-tracking/coordinate-frames for ROS frame
+/leg_positions/lb: [0.05, -0.2] # positive y is left from left camera
+/leg_positions/rf: [-0.15, 0] # positive z is up from left camera
+/leg_positions/rb: [-0.15, -0.2] # coordinates should be in [y, z] format
+/dynamixel_ids/lf: 1
+/dynamixel_ids/lb: 2
+/dynamixel_ids/rf: 3
+/dynamixel_ids/rb: 4
