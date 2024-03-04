@@ -1,8 +1,4 @@
 # things that may change between tests
-/starting_leg_heights/lf: 0.01 # in meters
-/starting_leg_heights/rf: 0.01 # in meters
-/starting_leg_heights/lb: 0.01 # in meters
-/starting_leg_heights/rb: 0.01 # in meters
 /dynamixel/running_ids: [1, 2, 3, 4]
 
 # things that will not change between tests
