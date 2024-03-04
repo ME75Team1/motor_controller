@@ -13,6 +13,7 @@ from dynamixel_sdk import *
 from dynamixel_sdk_examples.srv import *
 from dynamixel_sdk_examples.msg import *
 from motor_controller.msg import legHeights
+import yaml
 
 if os.name == 'nt':
     import msvcrt
@@ -61,12 +62,18 @@ METERS_PER_PULSE = METERS_PER_REVOLUTION / RESOLUTION
 TWOS_COMPLEMENT_UPPER_LIMIT = 2147483647
 TWOS_COMPLEMENT_RANGE = 4294967295
 
+LF_ID = rospy.get_param('/dynamixel_ids/lf')
+RF_ID = rospy.get_param('/dynamixel_ids/rf')
+LB_ID = rospy.get_param('/dynamixel_ids/lb')
+RB_ID = rospy.get_param('/dynamixel_ids/rb')
+
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
 
 def set_goal_pos_callback(data):
     print("Set Goal Position of ID %s = %s" % (data.ids, data.heights))
     min_height = min(data.heights)
+    params_dict = {}
     for i, id in enumerate(data.ids):
         if id in DXL_IDS:
             adjusted_height = data.heights[i] - min_height
@@ -79,6 +86,18 @@ def set_goal_pos_callback(data):
                 print("DXL Communication Result: ", dxl_comm_result)
             if dxl_error !=0:
                 print("DXL Error: ", dxl_error)
+            if id == LF_ID:
+                params_dict['/starting_leg_heights/lf'] = adjusted_height
+            elif id == RF_ID:
+                params_dict['/starting_leg_heights/rf'] = adjusted_height
+            elif id == RB_ID:
+                params_dict['/starting_leg_heights/rb'] = adjusted_height
+            elif id == LB_ID:
+                params_dict['/starting_leg_heights/lb'] = adjusted_height
+    
+    with open('~/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
+        yaml.safe_dump(params, f)
+        
 
 def get_present_pos(req):
     dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, req.id, ADDR_PRESENT_POSITION)
@@ -183,28 +202,23 @@ def main():
     lb_initial_offset = lb_initial_height/METERS_PER_PULSE
     rb_initial_offset = rb_initial_height/METERS_PER_PULSE
 
-    lf_id = rospy.get_param('/dynamixel_ids/lf')
-    rf_id = rospy.get_param('/dynamixel_ids/rf')
-    lb_id = rospy.get_param('/dynamixel_ids/lb')
-    rb_id = rospy.get_param('/dynamixel_ids/rb')
-
-    lf_initial_position = get_present_pos_from_ID(lf_id)
-    rf_initial_position = get_present_pos_from_ID(rf_id)
-    lb_initial_position = get_present_pos_from_ID(lb_id)
-    rb_initial_position = get_present_pos_from_ID(rb_id)
+    lf_initial_position = get_present_pos_from_ID(LF_ID)
+    rf_initial_position = get_present_pos_from_ID(RF_ID)
+    lb_initial_position = get_present_pos_from_ID(LB_ID)
+    rb_initial_position = get_present_pos_from_ID(RB_ID)
 
     initial_positions = {}
-    initial_positions[lf_id] = lf_initial_position
-    initial_positions[rf_id] = rf_initial_position
-    initial_positions[lb_id] = lb_initial_position
-    initial_positions[rb_id] = rb_initial_position
+    initial_positions[LF_ID] = lf_initial_position
+    initial_positions[RF_ID] = rf_initial_position
+    initial_positions[LB_ID] = lb_initial_position
+    initial_positions[RB_ID] = rb_initial_position
 
     print("Initial Positions Read from Dynamixels: ", initial_positions)
 
-    ZERO_POSITION_VALUES[lf_id] = int(lf_initial_position - lf_initial_offset)
-    ZERO_POSITION_VALUES[rf_id] = int(rf_initial_position - rf_initial_offset)
-    ZERO_POSITION_VALUES[lb_id] = int(lb_initial_position - lb_initial_offset)
-    ZERO_POSITION_VALUES[rb_id] = int(rb_initial_position - rb_initial_offset)
+    ZERO_POSITION_VALUES[LF_ID] = int(lf_initial_position - lf_initial_offset)
+    ZERO_POSITION_VALUES[RF_ID] = int(rf_initial_position - rf_initial_offset)
+    ZERO_POSITION_VALUES[LB_ID] = int(lb_initial_position - lb_initial_offset)
+    ZERO_POSITION_VALUES[RB_ID] = int(rb_initial_position - rb_initial_offset)
 
     print("Position Values at Zero Height: ", ZERO_POSITION_VALUES)
 
