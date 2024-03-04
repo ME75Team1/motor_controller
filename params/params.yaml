@@ -6,7 +6,7 @@
 /dynamixel/running_ids: [1, 4]
 
 # things that will not change between tests
-/dynamixel/meters_per_revolution: -0.004 # in meters
+/dynamixel/meters_per_revolution: -0.004 # in meters (note: negative sign means the leg height decreases when the dynamixel position increases)
 /dynamixel/max_extension: 0.07 # in meters
 /leg_positions/lf: [0.05, 0] # see https://www.stereolabs.com/docs/positional-tracking/coordinate-frames for ROS frame
 /leg_positions/lb: [0.05, -0.2] # positive y is left from left camera
