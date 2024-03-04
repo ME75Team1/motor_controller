@@ -12,7 +12,7 @@ import rospy
 from dynamixel_sdk import *
 from dynamixel_sdk_examples.srv import *
 from dynamixel_sdk_examples.msg import *
-from landing_optimizer.msg import legHeights
+from motor_controller.msg import legHeights
 
 if os.name == 'nt':
     import msvcrt
