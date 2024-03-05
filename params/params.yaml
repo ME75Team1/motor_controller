@@ -19,4 +19,4 @@
 
 # control cutoffs
 /dynamixel/minimum_height_difference: 0.001
-/dynamixel/minimum_altitude: 0.5
+/dynamixel/minimum_altitude: 0.3
