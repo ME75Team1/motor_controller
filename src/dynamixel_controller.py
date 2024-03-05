@@ -104,8 +104,7 @@ def set_goal_pos_callback(data, f):
                     params_dict['/starting_leg_heights/lb'] = adjusted_height
                     current_positions[3] = adjusted_height
         if params_dict != {}:
-            yaml.safe_dump(params_dict, f)
-        
+            yaml.safe_dump(params_dict, f)        
 
 def get_present_pos(req):
     dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, req.id, ADDR_PRESENT_POSITION)
