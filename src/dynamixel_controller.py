@@ -71,36 +71,38 @@ portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
 
 MINIMUM_HEIGHT_DIFFERENCE = rospy.get_param('/dynamixel/minimum_height_difference')
+MINIMUM_ALT_DIFFERENCE = rospy.get_param('/dynamixel/minimum_altitude')
 current_positions = [-1000,-1000,-1000,-1000]
 
 def set_goal_pos_callback(data, f):
     print("Set Goal Position of ID %s = %s" % (data.ids, data.heights))
     min_height = min(data.heights)
     params_dict = {}
-    for i, id in enumerate(data.ids):
-        if id in DXL_IDS:
-            adjusted_height = data.heights[i] - min_height
-            adjusted_height = max(min(adjusted_height, MAX_HEIGHT), 0)
-            pulses_from_zero = int(adjusted_height/METERS_PER_PULSE)
-            position_to_set = pulses_from_zero + ZERO_POSITION_VALUES[id]
-            print(id, ": ", position_to_set)
-            dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
-            if dxl_comm_result !=0:
-                print("DXL Communication Result: ", dxl_comm_result)
-            if dxl_error !=0:
-                print("DXL Error: ", dxl_error)
-            if id == LF_ID and abs(adjusted_height - current_positions[0]) > MINIMUM_HEIGHT_DIFFERENCE:
-                params_dict['/starting_leg_heights/lf'] = adjusted_height
-                current_positions[0] = adjusted_height
-            elif id == RF_ID and abs(adjusted_height - current_positions[1]) > MINIMUM_HEIGHT_DIFFERENCE:
-                params_dict['/starting_leg_heights/rf'] = adjusted_height
-                current_positions[1] = adjusted_height
-            elif id == RB_ID and abs(adjusted_height - current_positions[2]) > MINIMUM_HEIGHT_DIFFERENCE:
-                params_dict['/starting_leg_heights/rb'] = adjusted_height
-                current_positions[2] = adjusted_height
-            elif id == LB_ID and abs(adjusted_height - current_positions[3]) > MINIMUM_HEIGHT_DIFFERENCE:
-                params_dict['/starting_leg_heights/lb'] = adjusted_height
-                current_positions[3] = adjusted_height
+    if min_height > MINIMUM_ALT_DIFFERENCE:
+        for i, id in enumerate(data.ids):
+            if id in DXL_IDS:
+                adjusted_height = data.heights[i] - min_height
+                adjusted_height = max(min(adjusted_height, MAX_HEIGHT), 0)
+                pulses_from_zero = int(adjusted_height/METERS_PER_PULSE)
+                position_to_set = pulses_from_zero + ZERO_POSITION_VALUES[id]
+                print(id, ": ", position_to_set)
+                dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
+                if dxl_comm_result !=0:
+                    print("DXL Communication Result: ", dxl_comm_result)
+                if dxl_error !=0:
+                    print("DXL Error: ", dxl_error)
+                if id == LF_ID and abs(adjusted_height - current_positions[0]) > MINIMUM_HEIGHT_DIFFERENCE:
+                    params_dict['/starting_leg_heights/lf'] = adjusted_height
+                    current_positions[0] = adjusted_height
+                elif id == RF_ID and abs(adjusted_height - current_positions[1]) > MINIMUM_HEIGHT_DIFFERENCE:
+                    params_dict['/starting_leg_heights/rf'] = adjusted_height
+                    current_positions[1] = adjusted_height
+                elif id == RB_ID and abs(adjusted_height - current_positions[2]) > MINIMUM_HEIGHT_DIFFERENCE:
+                    params_dict['/starting_leg_heights/rb'] = adjusted_height
+                    current_positions[2] = adjusted_height
+                elif id == LB_ID and abs(adjusted_height - current_positions[3]) > MINIMUM_HEIGHT_DIFFERENCE:
+                    params_dict['/starting_leg_heights/lb'] = adjusted_height
+                    current_positions[3] = adjusted_height
     
     yaml.safe_dump(params_dict, f)
         
