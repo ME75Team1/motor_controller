@@ -70,7 +70,7 @@ RB_ID = rospy.get_param('/dynamixel_ids/rb')
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
 
-def set_goal_pos_callback(data):
+def set_goal_pos_callback(data, f):
     print("Set Goal Position of ID %s = %s" % (data.ids, data.heights))
     min_height = min(data.heights)
     params_dict = {}
@@ -95,8 +95,7 @@ def set_goal_pos_callback(data):
             elif id == LB_ID:
                 params_dict['/starting_leg_heights/lb'] = adjusted_height
     
-    with open('~/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
-        yaml.safe_dump(params, f)
+    yaml.safe_dump(params_dict, f)
         
 
 def get_present_pos(req):
@@ -117,9 +116,10 @@ def twos_complement_to_signed_integer(val):
 
 def read_write_py_node():
     rospy.init_node('read_write_py_node')
-    rospy.Subscriber('/leg_heights', legHeights, set_goal_pos_callback, queue_size=1)
-    rospy.Service('get_position', GetPosition, get_present_pos)
-    rospy.spin()
+    with open('/home/team1/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
+        rospy.Subscriber('/leg_heights', legHeights, set_goal_pos_callback, f, queue_size=1)
+        rospy.Service('get_position', GetPosition, get_present_pos)
+        rospy.spin()
 
 def main():
     # Open port
