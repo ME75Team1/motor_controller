@@ -103,8 +103,7 @@ def set_goal_pos_callback(data, f):
                 elif id == LB_ID and abs(adjusted_height - current_positions[3]) > MINIMUM_HEIGHT_DIFFERENCE:
                     params_dict['/starting_leg_heights/lb'] = adjusted_height
                     current_positions[3] = adjusted_height
-    
-    yaml.safe_dump(params_dict, f)
+        yaml.safe_dump(params_dict, f)
         
 
 def get_present_pos(req):
