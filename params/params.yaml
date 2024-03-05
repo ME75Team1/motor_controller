@@ -16,3 +16,6 @@
 /dynamixel_ids/lb: 3
 /dynamixel_ids/rf: 2
 /dynamixel_ids/rb: 1
+
+# control cutoffs
+/dynamixel/minimum_height_difference: 0.001
