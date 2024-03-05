@@ -13,7 +13,6 @@ from dynamixel_sdk import *
 from dynamixel_sdk_examples.srv import *
 from dynamixel_sdk_examples.msg import *
 from motor_controller.msg import legHeights
-import yaml
 
 if os.name == 'nt':
     import msvcrt
@@ -74,61 +73,15 @@ MINIMUM_HEIGHT_DIFFERENCE = rospy.get_param('/dynamixel/minimum_height_differenc
 MINIMUM_ALT_DIFFERENCE = rospy.get_param('/dynamixel/minimum_altitude')
 current_positions = [-1000,-1000,-1000,-1000]
 
-def set_goal_pos_callback(data, f):
-    print("Set Goal Position of ID %s = %s" % (data.ids, data.heights))
-    min_height = min(data.heights)
-    params_dict = {}
-    if min_height > MINIMUM_ALT_DIFFERENCE:
-        for i, id in enumerate(data.ids):
-            if id in DXL_IDS:
-                adjusted_height = data.heights[i] - min_height
-                adjusted_height = max(min(adjusted_height, MAX_HEIGHT), 0)
-                pulses_from_zero = int(adjusted_height/METERS_PER_PULSE)
-                position_to_set = pulses_from_zero + ZERO_POSITION_VALUES[id]
-                print(id, ": ", position_to_set)
-                dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
-                if dxl_comm_result !=0:
-                    print("DXL Communication Result: ", dxl_comm_result)
-                if dxl_error !=0:
-                    print("DXL Error: ", dxl_error)
-                if id == LF_ID and abs(adjusted_height - current_positions[0]) > MINIMUM_HEIGHT_DIFFERENCE:
-                    params_dict['/starting_leg_heights/lf'] = adjusted_height
-                    current_positions[0] = adjusted_height
-                elif id == RF_ID and abs(adjusted_height - current_positions[1]) > MINIMUM_HEIGHT_DIFFERENCE:
-                    params_dict['/starting_leg_heights/rf'] = adjusted_height
-                    current_positions[1] = adjusted_height
-                elif id == RB_ID and abs(adjusted_height - current_positions[2]) > MINIMUM_HEIGHT_DIFFERENCE:
-                    params_dict['/starting_leg_heights/rb'] = adjusted_height
-                    current_positions[2] = adjusted_height
-                elif id == LB_ID and abs(adjusted_height - current_positions[3]) > MINIMUM_HEIGHT_DIFFERENCE:
-                    params_dict['/starting_leg_heights/lb'] = adjusted_height
-                    current_positions[3] = adjusted_height
-        if params_dict != {}:
-            yaml.safe_dump(params_dict, f)        
-
-def get_present_pos(req):
-    dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, req.id, ADDR_PRESENT_POSITION)
-    present_pos = twos_complement_to_signed_integer(dxl_present_position)
-    print("Present Position of ID %s = %s" % (req.id, present_pos))
-    return present_pos
-
-def get_present_pos_from_ID(id):
-    dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, id, ADDR_PRESENT_POSITION)
-    return twos_complement_to_signed_integer(dxl_present_position)
-
-def twos_complement_to_signed_integer(val):
-    if val > TWOS_COMPLEMENT_UPPER_LIMIT:
-        return(-1 * (TWOS_COMPLEMENT_RANGE - val))
-    else:
-        return val
-
-def read_write_py_node(params_dict):
-    rospy.init_node('read_write_py_node')
-    with open('/home/team1/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
-        yaml.safe_dump(params_dict, f)
-        rospy.Subscriber('/leg_heights', legHeights, set_goal_pos_callback, f, queue_size=1)
-        rospy.Service('get_position', GetPosition, get_present_pos)
-        rospy.spin()
+def set_motor_positions(position_to_set):
+    print("Setting Motors to Large Negative Position")
+    for id in DXL_IDS:
+        print(f"DXL {id} set to position_to_set")
+        dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
+        if dxl_comm_result !=0:
+            print("DXL Communication Result: ", dxl_comm_result)
+        if dxl_error !=0:
+            print("DXL Error: ", dxl_error)
 
 def main():
     # Open port
@@ -157,6 +110,7 @@ def main():
         # Disable Dynamixel Torque
         dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, id, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
         if dxl_comm_result != COMM_SUCCESS:
+            print(f"ID {id}")
             print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
             print("Press any key to terminate...")
             getch()
@@ -201,45 +155,9 @@ def main():
         
         print()
 
-    lf_initial_height = rospy.get_param('/starting_leg_heights/lf')
-    lb_initial_height = rospy.get_param('/starting_leg_heights/lb')
-    rb_initial_height = rospy.get_param('/starting_leg_heights/rb')
-    rf_initial_height = rospy.get_param('/starting_leg_heights/rf')
-
-    params_dict = {}
-    params_dict['/starting_leg_heights/lf'] = lf_initial_height
-    params_dict['/starting_leg_heights/rf'] = rf_initial_height
-    params_dict['/starting_leg_heights/lb'] = lb_initial_height
-    params_dict['/starting_leg_heights/rb'] = rb_initial_height
-
-    lf_initial_offset = lf_initial_height/METERS_PER_PULSE
-    rf_initial_offset = rf_initial_height/METERS_PER_PULSE
-    lb_initial_offset = lb_initial_height/METERS_PER_PULSE
-    rb_initial_offset = rb_initial_height/METERS_PER_PULSE
-
-    lf_initial_position = get_present_pos_from_ID(LF_ID)
-    rf_initial_position = get_present_pos_from_ID(RF_ID)
-    lb_initial_position = get_present_pos_from_ID(LB_ID)
-    rb_initial_position = get_present_pos_from_ID(RB_ID)
-
-    initial_positions = {}
-    initial_positions[LF_ID] = lf_initial_position
-    initial_positions[RF_ID] = rf_initial_position
-    initial_positions[LB_ID] = lb_initial_position
-    initial_positions[RB_ID] = rb_initial_position
-
-    print("Initial Positions Read from Dynamixels: ", initial_positions)
-
-    ZERO_POSITION_VALUES[LF_ID] = int(lf_initial_position - lf_initial_offset)
-    ZERO_POSITION_VALUES[RF_ID] = int(rf_initial_position - rf_initial_offset)
-    ZERO_POSITION_VALUES[LB_ID] = int(lb_initial_position - lb_initial_offset)
-    ZERO_POSITION_VALUES[RB_ID] = int(rb_initial_position - rb_initial_offset)
-
-    print("Position Values at Zero Height: ", ZERO_POSITION_VALUES)
-
     print("Ready to get & set Position.")
 
-    read_write_py_node(params_dict)
+    set_motor_positions(100000)
 
 
 if __name__ == '__main__':

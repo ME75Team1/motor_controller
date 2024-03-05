@@ -67,6 +67,6 @@ include_directories(
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 
-catkin_install_python(PROGRAMS src/dynamixel_controller.py
+catkin_install_python(PROGRAMS src/dynamixel_controller.py src/zero_motors.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
