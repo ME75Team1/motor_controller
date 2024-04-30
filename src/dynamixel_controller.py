@@ -124,6 +124,7 @@ def twos_complement_to_signed_integer(val):
         return val
 
 def read_write_py_node(params_dict):
+    print("Test")
     rospy.init_node('read_write_py_node')
     with open('/home/team1/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
         yaml.safe_dump(params_dict, f)
