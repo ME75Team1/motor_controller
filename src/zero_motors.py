@@ -106,6 +106,7 @@ def main():
 
     print()
 
+    print(DXL_IDS)
     for id in DXL_IDS:
         # Disable Dynamixel Torque
         dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, id, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
