@@ -128,6 +128,8 @@ def read_write_py_node(params_dict):
         yaml.safe_dump(params_dict, f)
         rospy.Subscriber('/leg_heights', legHeights, set_goal_pos_callback, f, queue_size=1)
         rospy.Service('get_position', GetPosition, get_present_pos)
+        for l in f:
+            print(l)
         rospy.spin()
 
 def main():
