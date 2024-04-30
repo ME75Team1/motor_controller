@@ -85,7 +85,6 @@ def set_motor_positions(position_to_set):
 
 def main():
     # Open port
-    print("HI")
     try:
         portHandler.openPort()
         print("Succeeded to open the port")
