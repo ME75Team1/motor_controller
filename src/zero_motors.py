@@ -75,7 +75,7 @@ current_positions = [-1000,-1000,-1000,-1000]
 
 def set_motor_positions(position_to_set):
     print("Setting Motors to Large Negative Position")
-    for id in [1]:
+    for id in DXL_IDS:
         print(f"DXL {id} set to position_to_set")
         dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
         if dxl_comm_result !=0:
@@ -85,6 +85,7 @@ def set_motor_positions(position_to_set):
 
 def main():
     # Open port
+    print("HI")
     try:
         portHandler.openPort()
         print("Succeeded to open the port")
@@ -106,7 +107,7 @@ def main():
 
     print()
 
-    for id in [1]:
+    for id in DXL_IDS:
         # Disable Dynamixel Torque
         dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, id, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
         if dxl_comm_result != COMM_SUCCESS:
