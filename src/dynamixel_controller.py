@@ -125,11 +125,11 @@ def twos_complement_to_signed_integer(val):
 def read_write_py_node(params_dict):
     rospy.init_node('read_write_py_node')
     with open('/home/team1/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
-        print("HI")
         yaml.safe_dump(params_dict, f)
         rospy.Subscriber('/leg_heights', legHeights, set_goal_pos_callback, f, queue_size=1)
         rospy.Service('get_position', GetPosition, get_present_pos)
         rospy.spin()
+        print("HI")
 
 def main():
     # Open port
