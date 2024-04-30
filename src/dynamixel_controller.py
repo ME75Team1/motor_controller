@@ -41,8 +41,7 @@ ADDR_OPERATING_MODE     = 11
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
-# DXL_IDS                     = rospy.get_param('/dynamixel/running_ids')               # Dynamixel ID : 1
-DXL_IDS = [3]
+DXL_IDS                     = rospy.get_param('/dynamixel/running_ids')               # Dynamixel ID : 1
 BAUDRATE                    = 57600         # Dynamixel default baudrate : 57600
 DEVICENAME                  = '/dev/ttyUSB0'    # Check which port is being used on your controller
                                                 # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
@@ -126,7 +125,6 @@ def twos_complement_to_signed_integer(val):
 def read_write_py_node(params_dict):
     rospy.init_node('read_write_py_node')
     with open('/home/team1/catkin_ws/src/motor_controller/params/params_saved.yaml', 'w') as f:
-        print("Test")
         yaml.safe_dump(params_dict, f)
         rospy.Subscriber('/leg_heights', legHeights, set_goal_pos_callback, f, queue_size=1)
         rospy.Service('get_position', GetPosition, get_present_pos)
