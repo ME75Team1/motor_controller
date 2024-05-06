@@ -76,6 +76,18 @@ current_positions = [-1000,-1000,-1000,-1000]
 def set_motor_positions(position_to_set):
     print("Setting Motors to Large Negative Position")
     for id in DXL_IDS:
+        # Read present position
+        dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, id, ADDR_PRESENT_POSITION)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+        # Check if the present position is equal to the desired position
+        if dxl_present_position == position_to_set:
+            print(f"Motor {id} has reached the desired position.")
+            continue
+
         print(f"DXL {id} set to position_to_set")
         dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
         if dxl_comm_result !=0:
