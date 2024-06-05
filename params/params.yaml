@@ -12,10 +12,10 @@
 /leg_positions/lb: [0.08998, -0.1] # positive y is left from left camera
 /leg_positions/rf: [-0.15297, 0.1] # positive z is up from left camera
 /leg_positions/rb: [-0.08998, -0.1] # coordinates should be in [y, z] format
-/dynamixel_ids/lf: 3
-/dynamixel_ids/lb: 1
-/dynamixel_ids/rf: 2
-/dynamixel_ids/rb: 4
+/dynamixel_ids/lf: 1
+/dynamixel_ids/lb: 2
+/dynamixel_ids/rf: 4
+/dynamixel_ids/rb: 3
 
 # control cutoffs
 /dynamixel/minimum_height_difference: 0.001
