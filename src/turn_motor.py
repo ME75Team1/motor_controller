@@ -1,132 +1,176 @@
-/*******************************************************************************
-*
-**  Name: Daniel Slovich
-**  Date: 5/7/21
-**  Info: Application to setup and test 5DOF robot arm
-**        with daisy chained Dynamixel XL-330 micro servos.
-**        
-**  Note: To assign individual servo id's, connect servos       
-**        one at a time and run "scan_dynamixel.ino"
-**        and gather default id from serial monitor. 
-**        Then run "id.ino" and assigned the desired ID. 
-**        Do this for each motor separately before assembly.
-*        
-*******************************************************************************/
+#!/usr/bin/env python
 
-/* NOTE: Please check if your DYNAMIXEL supports Profile Control
-* Supported Products : MX-28(2.0), MX-64(2.0), MX-106(2.0), All X series(except XL-320)
-* PRO(A) series / PRO+ series
-* Designed and tested using the XL-330
-*/
+# run using roslaunch motor_controller motors.launch to ensure params are set
+# can test setting position using:
+# rostopic pub -1 /leg_heights landing_optimizer/legHeights "{ids: [1,4], heights: [0.01,0.1]}"
 
-#include <DynamixelShield.h>
+# can test getting position using:
+# rosservice call /get_position "id: 4"
 
-#if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_MEGA2560)
-  #include <SoftwareSerial.h>
-  SoftwareSerial soft_serial(7, 8); // DYNAMIXELShield UART RX/TX
-  #define DEBUG_SERIAL soft_serial
-#elif defined(ARDUINO_SAM_DUE) || defined(ARDUINO_SAM_ZERO)
-  #define DEBUG_SERIAL SerialUSB    
-#else
-  #define DEBUG_SERIAL Serial
-#endif
+import os
+import rospy
+from dynamixel_sdk import *
+from dynamixel_sdk_examples.srv import *
+from dynamixel_sdk_examples.msg import *
+from motor_controller.msg import legHeights
 
-//DXL ID's set prior using "scan_dynamixel" and "id"
+if os.name == 'nt':
+    import msvcrt
+    def getch():
+        return msvcrt.getch().decode()
+else:
+    import sys, tty, termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    def getch():
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
 
-const uint8_t DXL_5 = 5;
-const float DXL_PROTOCOL_VERSION = 2.0;
+# Control table address
+ADDR_TORQUE_ENABLE      = 64               # Control table address is different in Dynamixel model
+ADDR_GOAL_POSITION      = 116
+ADDR_PRESENT_POSITION   = 132
+ADDR_OPERATING_MODE     = 11
 
-DynamixelShield dxl;
+# Protocol version
+PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
-//This namespace is required to use Control table item names
-using namespace ControlTableItem;
+# Default setting
+DXL_IDS                     = 5             # Dynamixel ID : 1
+BAUDRATE                    = 57600         # Dynamixel default baudrate : 57600
+DEVICENAME                  = '/dev/ttyUSB0'    # Check which port is being used on your controller
+                                                # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
 
-void setup() {
-  DEBUG_SERIAL.begin(115200);
-  // Set baud rate for DXLs
-  dxl.begin(57600);
-  dxl.setPortProtocolVersion(DXL_PROTOCOL_VERSION);
-  // Check if active
+TORQUE_ENABLE               = 1                 # Value for enabling the torque
+TORQUE_DISABLE              = 0                 # Value for disabling the torque
+DXL_MINIMUM_POSITION_VALUE  = -1048575               # Dynamixel will rotate between this value
+DXL_MAXIMUM_POSITION_VALUE  = 1048575        # and this value (note that the Dynamixel would not move when the position value is out of movable range. Check e-manual about the range of the Dynamixel you use.)
+DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
+OPERATING_MODE              = 4               # extended position control mode
 
-  dxl.ping(DXL_5);
+ZERO_POSITION_VALUES = {}
+METERS_PER_REVOLUTION = rospy.get_param('/dynamixel/meters_per_revolution')
+RESOLUTION = 4096 # pulses per revolution
+MAX_HEIGHT = rospy.get_param('/dynamixel/max_extension')
+METERS_PER_PULSE = METERS_PER_REVOLUTION / RESOLUTION
 
-  // Turn off torque when configuring items in EEPROM area
+TWOS_COMPLEMENT_UPPER_LIMIT = 2147483647
+TWOS_COMPLEMENT_RANGE = 4294967295
 
-  dxl.torqueOff(DXL_5);
+LF_ID = rospy.get_param('/dynamixel_ids/lf')
+RF_ID = rospy.get_param('/dynamixel_ids/rf')
+LB_ID = rospy.get_param('/dynamixel_ids/lb')
+RB_ID = rospy.get_param('/dynamixel_ids/rb')
 
-  dxl.setOperatingMode(DXL_5, OP_POSITION);
+portHandler = PortHandler(DEVICENAME)
+packetHandler = PacketHandler(PROTOCOL_VERSION)
 
-  dxl.torqueOn(DXL_5);
+MINIMUM_HEIGHT_DIFFERENCE = rospy.get_param('/dynamixel/minimum_height_difference')
+MINIMUM_ALT_DIFFERENCE = rospy.get_param('/dynamixel/minimum_altitude')
+current_positions = [-1000,-1000,-1000,-1000]
 
-  // Set DXLs acceleration and velocity
-  dxl.writeControlTableItem(PROFILE_ACCELERATION, DXL_1, 50);//shoulder 4:1 planetary ratio
-  dxl.writeControlTableItem(PROFILE_VELOCITY, DXL_1,130);
-  dxl.writeControlTableItem(PROFILE_ACCELERATION, DXL_2, 50);//shoulder 4:1 planetary ratio
-  dxl.writeControlTableItem(PROFILE_VELOCITY, DXL_2,130);
-  dxl.writeControlTableItem(PROFILE_ACCELERATION, DXL_3, 50);//elbow 1:1
-  dxl.writeControlTableItem(PROFILE_VELOCITY, DXL_3, 50);
-  dxl.writeControlTableItem(PROFILE_ACCELERATION, DXL_4, 50);//wrist 1:1
-  dxl.writeControlTableItem(PROFILE_VELOCITY, DXL_4, 130);
-  dxl.writeControlTableItem(PROFILE_ACCELERATION, DXL_5, 200);//eef 1:1
-  dxl.writeControlTableItem(PROFILE_VELOCITY, DXL_5, 200);
+def set_motor_positions(position_to_set):
+    print("Setting Motors to Large Negative Position")
+    for id in DXL_IDS:
+        # Read present position
+        dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, id, ADDR_PRESENT_POSITION)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-  // Set Home position in angle(degree)
-  // These positions correspond to all joints aligned vertically
-  // run program to set servo home angles before connecting hardware links/joints
-  // Take consideration when assembling to preserve these positions!
-  dxl.setGoalPosition(DXL_5, 180.0, UNIT_DEGREE); //shoulder - rotational
-  delay(2500);
-}
+        # Check if the present position is equal to the desired position
+        if dxl_present_position == position_to_set:
+            print(f"Motor {id} has reached the desired position.")
+            continue
 
-void loop() {
-  // Wave hello
-  dxl.setGoalPosition(DXL_2, 360.0, UNIT_DEGREE);
-  dxl.setGoalPosition(DXL_3, 200.0, UNIT_DEGREE);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(1500);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(1500);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(500);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(500);
+        print(f"DXL {id} set to position_to_set")
+        dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, id, ADDR_GOAL_POSITION, position_to_set)
+        if dxl_comm_result !=0:
+            print("DXL Communication Result: ", dxl_comm_result)
+        if dxl_error !=0:
+            print("DXL Error: ", dxl_error)
 
-  // Return to home
-  dxl.setGoalPosition(DXL_5, 180.0, UNIT_DEGREE);
-  delay(1500);
+def main():
+    # Open port
+    try:
+        portHandler.openPort()
+        print("Succeeded to open the port")
+    except:
+        print("Failed to open the port")
+        print("Press any key to terminate...")
+        getch()
+        quit()
 
-  // Test all joint movements
+    # Set port baudrate
+    try:
+        portHandler.setBaudRate(BAUDRATE)
+        print("Succeeded to change the baudrate")
+    except:
+        print("Failed to change the baudrate")
+        print("Press any key to terminate...")
+        getch()
+        quit()
 
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(1000);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(1000);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(1000);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(1000);
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(1000);
-  dxl.setGoalPosition(DXL_5, 80.0, UNIT_DEGREE);
-  delay(2500);
+    print()
 
-  dxl.setGoalPosition(DXL_5, 280.0, UNIT_DEGREE);
-  delay(2500);
-  dxl.setGoalPosition(DXL_5, 180.0, UNIT_DEGREE);
+    for id in DXL_IDS:
+        # Disable Dynamixel Torque
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, id, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
+        if dxl_comm_result != COMM_SUCCESS:
+            print(f"ID {id}")
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+            print("Press any key to terminate...")
+            getch()
+            quit()
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+            print("Press any key to terminate...")
+            getch()
+            quit()
+        else:
+            print(f"ID {id}: Torque has been successfully disabled")
 
-  //end
-  delay(10000000);
-  
-}
+        # enable extended position mode
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, id, ADDR_OPERATING_MODE, OPERATING_MODE)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+            print("Press any key to terminate...")
+            getch()
+            quit()
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+            print("Press any key to terminate...")
+            getch()
+            quit()
+        else:
+            print(f"ID {id}: Extended Position Control Mode has been successfully set")
+
+        # Enable Dynamixel Torque
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, id, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+            print("Press any key to terminate...")
+            getch()
+            quit()
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+            print("Press any key to terminate...")
+            getch()
+            quit()
+        else:
+            print(f"ID {id}: Torque has been successfully enabled")
+        
+        print()
+
+    print("Ready to get & set Position.")
+
+    set_motor_positions(100000)
+
+
+if __name__ == '__main__':
+    main()
